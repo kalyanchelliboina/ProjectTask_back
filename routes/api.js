@@ -41,6 +41,11 @@ router.get('/users', verifyToken, (req,res) => {
 
 router.post('/register', (req,res) => {
     let userData = req.body
+    let str1 = req.body.firstName
+    let str2 = req.body.lastName
+     userData.fullName = str1 + " " + str2;
+     console.log(userData.fullName)
+     console.log(userData)
     let user = new User(userData)
     user.save((error, data) => {
         if(error) {

@@ -14,7 +14,9 @@ const taskSchema = mongoose.Schema({
     startDate : String,
     endDate : String,
     description : String,
-    workHours : String
+    workHours : String,
+    file: String,
+    assigned: [{type: String}]
 })
 
 const task = mongoose.model('task', taskSchema, 'tasks')

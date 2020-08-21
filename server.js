@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const serveIndex = require('serve-index');
 
 const PORT = 3000
 
@@ -23,3 +24,5 @@ app.get('/', (req,res) => {
 app.listen(PORT, ()=> {
     console.log('Server is running on localhost:' + PORT);
 })
+
+app.use('/uploads', express.static('uploads'), serveIndex('uploads', {'icons': true}));

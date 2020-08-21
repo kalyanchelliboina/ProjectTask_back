@@ -1,5 +1,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const nodemailer = require('nodemailer');
 
 const router = express.Router();
 
@@ -115,7 +117,7 @@ function verifyToken(req, res, next) {
                  res.status(401).send('User not valid')
              } else {
                  console.log('here')
-                 console.log(user)
+                //  console.log(user)
                  const savingData = {
                      name: taskData.name,
                      projectId: req.params.id
@@ -157,10 +159,10 @@ function verifyToken(req, res, next) {
                  if(err) {
                      console.log('here too')
                  } else {
-                     console.log(req.body)
-                     console.log(user.email)
+                    //  console.log(req.body)
+                    //  console.log(user.email)
                      Task.findOneAndUpdate( { _id: req.params.taskId}, { $push: { comments: { comment: req.body.comment,
-                    commentator: user.email, billableOrNonBillable: req.body.billOrNonbill, timeLog: req.body.timeLog}}}, function (error, success) {
+                    commentator: user.fullName, billableOrNonBillable: req.body.billOrNonbill, timeLog: req.body.timeLog}}}, function (error, success) {
                         if(error) {
                             console.log(error)
                         } else {
@@ -193,7 +195,168 @@ router.patch('/updateTask/dateDescription/:taskId', verifyToken, (req, res) => {
  })
 
 
+ const storage = multer.diskStorage({
+    destination: (req, file, callBack) => {
+        callBack(null, 'uploads')
+    },
+    filename: (req, file, callBack) => {
+        callBack(null, `FunOfHeuristic_${file.originalname}`)
+    }
+  })
+  
+const upload = multer({ storage: storage })
 
- 
+
+router.post('/file/:taskId', upload.single('file'), (req, res, next) => {
+    const file = req.file;
+    // console.log(file.filename);
+    if (!file) {
+        const error = new Error('No File')
+        error.httpStatusCode = 400
+        return next(error)
+      }
+        console.log(file);
+        Task.findOneAndUpdate({ _id: req.params.taskId }, { file: file.filename }, (err, data) => {
+            if(err) {
+                console.log(err)
+            } else {
+                // console.log(data)
+                // console.log('success')
+            }
+        })
+})
+
+
+router.post('/assigned/:taskId', (req, res) => {
+    // console.log(req.body)
+    Task.findOneAndUpdate({ _id: req.params.taskId }, { $set: { assigned: req.body }}, (err, res) => {
+        if(err) {
+            console.log(err)
+            console.log('error')
+        } else {
+            // console.log(res)
+            console.log('data')
+        }
+    })
+})
+
+
+router.get('/userEmails', verifyToken, (req, res) => {
+    console.log(req.body)
+    console.log(req.userId)
+   User.find({ _id: req.userId }, (err, user) => {
+       if(err) {
+           console.log(err)
+       } else {
+        //    console.log(user)
+        //    console.log(user[0].company)
+        
+           User.find( { company: user[0].company }, (err, data) => {
+               if (err) {
+                   console.log(err)
+               } else {
+                //    console.log(data)
+                   res.send(data)
+               }
+           })
+       }
+   })
+})
+
+
+
+router.post("/sendmail/:taskTitle/:projectName", verifyToken, (req, res) => {
+    console.log("request came");
+    // console.log(req.body)
+    let user = req.body;
+    // console.log(user[0])
+    let taskTitle = req.params.taskTitle;
+    let projectName = req.params.projectName;
+    console.log('hey' + req.params.projectName)
+    
+    for (i=0; i< user.length; i++) {
+        User.find({ fullName: user[i] }, (err, data) => {
+            if(err) {
+                console.log(err)
+            } else {
+               userEmailsData = data[0].email
+                console.log(userEmailsData)
+            }
+            console.log(userEmailsData)
+            sendMail(userEmailsData, info => {
+                console.log(`The mail has beed send 😃 and the id is ${info.messageId}`);
+                res.send(info);
+              });
+            
+          
+            
+            async function sendMail(userEmailsData, callback) {
+              // create reusable transporter object using the default SMTP transport
+              let transporter = nodemailer.createTransport({
+                host: "smtp.zoho.com",
+                port: 587,
+                secure: false, // true for 465, false for other ports
+                auth: {
+                  user: "sales@sanchitaa.com",
+                  pass: "Sanchita#123"
+                }
+              });
+            
+              let mailOptions = {
+                from: '"Sanchitaa Projects"<sales@sanchitaa.com>', // sender address
+                to: userEmailsData, // list of receivers
+                subject: " A new update on the task 👻", // Subject line
+                html: `<h1>Hi </h1><br>
+                <h4>There is a new update on the task "${taskTitle}" of project "${projectName}" </h4><br>
+                <p>Please login to your projects portal</p><br>
+                <ul><li>Go to the dashboard</li><br>
+                <li>Select the project name "${projectName}"</li><br>
+                <li>Within the project "${projectName}", select the task "${taskTitle}" to check the update</li></ul>`
+              };
+            
+              // send mail with defined transport object
+              let info = await transporter.sendMail(mailOptions);
+            
+              callback(info);
+            }
+            
+        })
+        
+        
+    }
+
+  });
+
+  
+//   async function sendMail(user, callback) {
+//     // create reusable transporter object using the default SMTP transport
+//     let transporter = nodemailer.createTransport({
+//       host: "smtp.gmail.com",
+//       port: 587,
+//       secure: false, // true for 465, false for other ports
+//       auth: {
+//         user: co,
+//         pass:
+//       }
+//     });
+  
+//     let mailOptions = {
+//       from: '"Sanchitaa"<contact@sanchitaa.com>', // sender address
+//       to: user.email, // list of receivers
+//       subject: "Wellcome to Fun Of Heuristic 👻", // Subject line
+//       html: `<h1>Hi ${user.name}</h1><br>
+//       <h4>Thanks for joining us</h4>`
+//     };
+  
+//     // send mail with defined transport object
+//     let info = await transporter.sendMail(mailOptions);
+  
+//     callback(info);
+//   }
+
+
+
+
+
 
 module.exports = router;
